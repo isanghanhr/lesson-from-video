@@ -14,7 +14,8 @@ humanizer 로 문체를 다듬는다.
 ## 준비물
 
 - `yt-dlp`, `ffmpeg` (예: macOS `brew install yt-dlp ffmpeg`)
-- (선택) 자막이 없는 영상을 위한 Whisper API 키 — 없으면 yt-dlp 자동 자막에 의존
+- (선택) 자막이 전혀 없는 영상용 Whisper 키 — `GROQ_API_KEY`(권장) 또는 `OPENAI_API_KEY`.
+  없으면 yt-dlp 자동 자막에 의존하고, 자막도 없으면 프레임만으로 진행
 - (선택) 한국어 윤문을 위한 `humanizer` 스킬
 
 ## 산출물
@@ -64,8 +65,43 @@ print('lines:',len(out),'last:',out[-1][0] if out else None)
 PY
 ```
 
+### 자막이 없을 때 — Whisper 폴백
+
+위에서 `/tmp/lesson_sub*.vtt` 가 안 받아졌거나 전사가 비었고, `GROQ_API_KEY`(권장: 저렴·빠름)
+또는 `OPENAI_API_KEY` 가 설정돼 있으면 오디오를 추출해 Whisper로 전사한다. 둘 다 없으면
+이 단계는 건너뛰고 프레임만으로 진행한다.
+
+```bash
+# 모노 16kHz 오디오 추출 (약 0.5MB/분; API 업로드 한도 25MB ≈ 50분)
+ffmpeg -y -i /tmp/lesson.mp4 -vn -ac 1 -ar 16000 -b:a 64k /tmp/lesson_audio.mp3 -loglevel error
+
+if [ -n "$GROQ_API_KEY" ]; then
+  curl -s https://api.groq.com/openai/v1/audio/transcriptions \
+    -H "Authorization: Bearer $GROQ_API_KEY" \
+    -F model=whisper-large-v3 -F response_format=verbose_json \
+    -F file=@/tmp/lesson_audio.mp3 > /tmp/lesson_whisper.json
+else
+  curl -s https://api.openai.com/v1/audio/transcriptions \
+    -H "Authorization: Bearer $OPENAI_API_KEY" \
+    -F model=whisper-1 -F response_format=verbose_json \
+    -F file=@/tmp/lesson_audio.mp3 > /tmp/lesson_whisper.json
+fi
+```
+
+```bash
+# verbose_json 의 segments(start/text) → 타임스탬프 전사
+python3 - <<'PY'
+import json
+seg = json.load(open('/tmp/lesson_whisper.json')).get('segments', [])
+def mmss(s): s=int(s); return f"{s//60:02d}:{s%60:02d}"
+open('/tmp/lesson_transcript.txt','w',encoding='utf-8').write(
+    '\n'.join(f"[{mmss(x['start'])}] {x['text'].strip()}" for x in seg))
+print('whisper segments:', len(seg))
+PY
+```
+
 전사를 **전부 Read** 한다. 사용자가 원한 실습이 다뤄지는 구간을 찾아 단계로 분해한다.
-자막이 전혀 없으면(드묾) 프레임만으로 진행하되 사용자에게 알린다.
+자막도 Whisper도 불가하면(키 없음 등) 프레임만으로 진행하되 사용자에게 알린다.
 
 ## Step 3 — 교안 설계
 

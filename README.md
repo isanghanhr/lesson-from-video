@@ -13,7 +13,7 @@
 
 - [Claude Code](https://docs.claude.com/en/docs/claude-code)
 - `yt-dlp`, `ffmpeg` — macOS 예시: `brew install yt-dlp ffmpeg`
-- (선택) 자막이 없는 영상을 위한 Whisper API 키
+- (선택) 자막이 전혀 없는 영상용 Whisper 키 — `GROQ_API_KEY`(권장) 또는 `OPENAI_API_KEY`
 - (선택) 한국어 윤문용 `humanizer` 스킬 — 없으면 그 단계만 건너뜁니다
 
 ## 설치 (폴더 복사)
@@ -49,7 +49,7 @@ Claude Code를 다시 열면 `/lesson-from-video` 로 호출할 수 있습니다
 | 단계 | 내용 |
 |---|---|
 | 입력 | 영상 URL + 원하는 실습 |
-| 분석 | `yt-dlp` 자막 전사 + `ffmpeg` 프레임 추출 (자막 없으면 프레임만) |
+| 분석 | `yt-dlp` 자막 전사 + `ffmpeg` 프레임 추출 (자막 없으면 Whisper 폴백, 키도 없으면 프레임만) |
 | 작성 | 단계마다 캡쳐 1장, 타임스탬프 근거 표기 |
 | 출력 | 이미지를 base64로 인라인한 자기완결 `.md` |
 | 마무리 | (선택) `humanizer`로 한국어 윤문 |
